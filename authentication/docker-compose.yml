@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/boilerplate
+      SPRING_DATASOURCE_USERNAME: boilerplate
+      SPRING_DATASOURCE_PASSWORD: boilerplate
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fastfood-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: boilerplate
+      POSTGRES_PASSWORD: boilerplate
+      POSTGRES_DB: boilerplate
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fastfood-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U boilerplate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+networks:
+  fastfood-network:
+    driver: bridge
+volumes:
+  postgres_data: 

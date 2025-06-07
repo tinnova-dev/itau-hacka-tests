@@ -1,0 +1,38 @@
+{
+  "apps" : [
+    {
+      "name": "credit-card",
+      "repo": "",
+      "dependencies": [
+        "authentication",
+        "transaction-credit-auth"
+      ]
+    },
+    {
+      "name": "risk-engine",
+      "repo": "https://github.com/ramonmpacheco/itau-hacka-tests/tree/master/risk-engine",
+      "dependencies": [
+      ]
+    },
+    {
+      "name": "authentication",
+      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "dependencies": [
+      ]
+    },
+    {
+      "name": "pix",
+      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "dependencies": [
+        "risk-engine"
+      ]
+    },
+    {
+      "name": "transaction-credit-auth",
+      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "dependencies": [
+        "risk-engine"
+      ]
+    }
+  ]
+}

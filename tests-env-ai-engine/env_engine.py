@@ -3,6 +3,8 @@ import json
 from typing import List, Dict, Set
 from langchain.prompts import PromptTemplate
 from langchain_community.llms import HuggingFaceHub
+from transformers import pipeline
+from langchain.llms import HuggingFacePipeline
 
 class DependencyEngine:
     def __init__(self, dependency_file: str, llm_api_key: str):

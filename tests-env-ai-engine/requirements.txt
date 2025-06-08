@@ -1,6 +1,7 @@
-python-dotenv
-langchain
-huggingface_hub
-langchain_community
-transformers
-torch
+python-dotenv==1.0.0
+langchain==0.0.267
+huggingface_hub==0.16.4
+langchain_community==0.0.10
+transformers==4.31.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.1+cpu

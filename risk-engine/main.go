@@ -36,6 +36,7 @@ func main() {
 
 	// Rotas
 	r.Post("/risk-analysis", handleRiskAnalysis)
+	r.Get("/health", handleHealthCheck)
 
 	log.Println("Servidor iniciado na porta 8083")
 	log.Fatal(http.ListenAndServe(":8083", r))
@@ -58,4 +59,10 @@ func handleRiskAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }

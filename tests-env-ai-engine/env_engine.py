@@ -1,62 +1,100 @@
-import os
+import boto3
+from strands import Agent
+from strands.models import BedrockModel
+import logging
 import json
-from typing import List, Dict, Set
-from langchain.prompts import PromptTemplate
-from langchain_community.llms import HuggingFaceHub
 
-class DependencyEngine:
-    def __init__(self, dependency_file: str, llm_api_key: str):
-        self.dependency_file = dependency_file
-        # self.llm = HuggingFaceHub(repo_id="google/flan-t5-xl")
-        # Load a local model, e.g., google/flan-t5-small (downloaded automatically)
-        local_pipe = pipeline("text2text-generation", model="google/flan-t5-small")
-        self.llm = HuggingFacePipeline(pipeline=local_pipe)
-        self.dependencies, self.repos = self._parse_dependency_file()
+# Carregar o arquivo de dependências
+def load_dependencies(file_path):
+    with open(file_path, "r") as file:
+        return json.load(file)
 
-    def _parse_dependency_file(self) -> (Dict[str, List[str]], Dict[str, str]):
-        """
-        Reads the JSON dependency file and returns:
-        - dependencies: {app: [dep1, dep2, ...]}
-        - repos: {app: repo_url}
-        """
-        with open(self.dependency_file, 'r') as f:
-            data = json.load(f)
-        dependencies = {}
-        repos = {}
-        for app in data["apps"]:
-            name = app["name"]
-            dependencies[name] = app.get("dependencies", [])
-            repos[name] = app.get("repo", "")
-        return dependencies, repos
+# Filtrar apenas as aplicações que possuem dependências
+def filter_dependent_apps(apps):
+    return [app for app in apps if app["dependencies"]]
 
-    def _resolve_dependencies(self, app: str, visited: Set[str]=None) -> Set[str]:
-        if visited is None:
-            visited = set()
-        if app not in self.dependencies or app in visited:
-            return set()
-        visited.add(app)
-        for dep in self.dependencies[app]:
-            visited.update(self._resolve_dependencies(dep, visited))
-        return visited
+# Gerar um prompt para o ChatBedrock criar o Terraform
+def generate_terraform_prompt(apps):
+    services_str = "\n".join([
+        f"- {app['name']} (Repo: {app['repo']}) depende de {', '.join(app['dependencies'])}"
+        for app in apps
+    ])
+    
+    prompt = f"""
+    Gere um arquivo Terraform para provisionar os seguintes microsserviços de forma efêmera:
 
-    def generate_terraform(self, app: str, output_file: str):
-        all_apps = self._resolve_dependencies(app)
-        all_apps.add(app)
-        prompt = PromptTemplate(
-            input_variables=["apps"],
-            template=(
-                "Generate a Terraform configuration to deploy the following applications "
-                "in an ephemeral virtual environment: {apps}. "
-                "Each application should be deployed as a separate resource. "
-                "Use best practices for ephemeral environments."
-            )
-        )
-        apps_str = ', '.join(sorted(all_apps))
-        terraform_code = self.llm(prompt.format(apps=apps_str))
-        with open(output_file, 'w') as f:
-            f.write(terraform_code)
-        print(f"Terraform file generated at {output_file}")
+    {services_str}
 
-# Example usage:
-engine = DependencyEngine('../resources/dependencies.json', llm_api_key='sk-...')
-# engine.generate_terraform('credit-card', 'output.tf')
+    O Terraform deve conter:
+    - Recursos para cada serviço listado acima.
+    - Dependências entre os serviços.
+    - Provisionamento temporário (tempo de vida curto).
+    """
+    
+    return prompt
+
+# Usar ChatBedrock para gerar o Terraform
+def generate_terraform_code(prompt):
+    chat = ChatBedrock(model="anthropic.claude-v2", region="us-west-2")
+    response = chat.invoke(prompt)
+    return response
+
+def process():
+    file_path = "./resources/cmdb-output.json"  # Arquivo JSON com dependências
+    data = load_dependencies(file_path)
+        
+    dependent_apps = filter_dependent_apps(data["apps"])
+        
+    if not dependent_apps:
+        print("Nenhuma aplicação depende de outra. Nada a provisionar.")
+        return
+
+    
+    prompt = generate_terraform_prompt(dependent_apps)
+
+    
+    session = boto3.Session(
+        aws_access_key_id="ASIAYJ3F7NUYVYEDGCHS",
+        aws_secret_access_key="o9Z0A7VVyOX7VyztvVZZ8b4Ot8yVJ9NsXLy7zjZk",
+        aws_session_token="IQoJb3JpZ2luX2VjELX//////////wEaCXVzLWVhc3QtMSJHMEUCIQDZoNP3pW0ugI5TacQ17f8sRa6qvN/peY7x06HEqxpKjAIgYhgb++NMgDEkNRr1tI+qyvZMT0if8t1sVo3noidrHVQqogIIjf//////////ARACGgw1NzA5MDc2NTEzNzciDJ6xaSGTIUbO2CWe9ir2AekZcBrM3/YriffQZnYOSeypdQQNc5FaZOuMNR8lIAYINs3a4g94ey2Vby6NrvcgP6mTlFyEJzJFikdOG52UDc8HDZjNqF5Acy20BcKETh6kgNTaU3xRs/Ed9W92jw3f4qrCTwBuowjYCEfsdlYT56kmD0vwlRZsmqG6qZWHmLQlEa18yRAje8uQpokq1m1HZxx0P4QZ3J5M+5KhgPgDqATvUqBf5ONsGrVxoDmyvEkzFGJdbwkRMgKFauI4CmlA63ZBKq6giByMGVR+KvbNXce5j6nBSQki4jsvU+Qja79Ibg2SpUWeDHrb94R//LKg/Bk+pf8mtDCI/JXCBjqdAe62bt+xspfZy7+KS8Q1jZpDamVtFcffLBB0AkYZEJFQQCjK7OSeeD2lkucdlcVVM6xMfMBvyn7pMxuePQ9pp4DmFiW8Ij0CyXDaBa3B3jeWpQk6EBFB+vEyrHjiRSejzUus+Q+gYetNatJmSM1fFmFrg5sJ1ofEpYIL9TosGv8Z0+vCJOBG4xd81sBwQwvzOQcTqgK3tv0xs0MYPC8=",
+        region_name="us-west-2",
+    )
+    
+    bedrock_model = BedrockModel(
+        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        boto_session=session,
+        temperature=0.4,
+        top_p=0.8,
+    )
+
+    
+    agent = Agent(system_prompt=prompt, model=bedrock_model)
+    agent_result = agent("Gere exatamente apenas o código Terraform para provisionar os serviços listados acima. Nada além disso.")
+
+    print(agent_result)
+
+    # Extract textual content from agent_result
+    final_agent_response_text = ""
+    if hasattr(agent_result, 'response') and isinstance(agent_result.response, str):
+        final_agent_response_text = agent_result.response
+    elif hasattr(agent_result, 'content') and isinstance(agent_result.content, str):
+        final_agent_response_text = agent_result.content
+    elif hasattr(agent_result, 'output') and isinstance(agent_result.output, str):
+        final_agent_response_text = agent_result.output
+    elif isinstance(agent_result, str):
+        final_agent_response_text = agent_result
+    else:
+        try:
+            final_agent_response_text = str(agent_result)
+            print("DEBUG: Converted agent_result to string.")
+        except Exception as e:
+            print(f"ERROR: Could not extract text from AgentResult. Error: {e}")
+            print("Please inspect the 'agent_result' object to determine the correct attribute.")
+
+    # Salvar o código Terraform gerado
+    with open("./out/generated_terraform.tf", "w") as file:
+        file.write(final_agent_response_text)
+
+    print("Arquivo Terraform gerado com sucesso: generated_terraform.tf")
+
+process()

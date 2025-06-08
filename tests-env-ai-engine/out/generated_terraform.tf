@@ -1,276 +1,344 @@
 ```terraform
-# Define provider
-provider "aws" {
-  region = "us-east-1"
-}
-
-# Define risk-engine service (dependency for pix and transaction-credit-auth)
-resource "aws_ecs_service" "risk_engine" {
-  name            = "risk-engine"
-  cluster         = "microservices-cluster"
-  task_definition = aws_ecs_task_definition.risk_engine.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = ["subnet-12345678"]
-    security_groups = ["sg-12345678"]
-    assign_public_ip = true
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    # Ephemeral - will be destroyed after 4 hours
-    ignore_changes = []
-  }
-
-  # Set TTL for ephemeral service
-  provisioner "local-exec" {
-    command = "sleep 14400 && aws ecs update-service --cluster microservices-cluster --service risk-engine --desired-count 0"
-  }
-}
-
-resource "aws_ecs_task_definition" "risk_engine" {
-  family                   = "risk-engine"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = "arn:aws:iam::123456789012:role/ecsTaskExecutionRole"
-
-  container_definitions = jsonencode([
-    {
-      name      = "risk-engine"
-      image     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/risk-engine:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ]
+main.tf
+Definição dos provedores
+terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
     }
-  ])
-}
-
-# Define authentication service (dependency for credit-card)
-resource "aws_ecs_service" "authentication" {
-  name            = "authentication"
-  cluster         = "microservices-cluster"
-  task_definition = aws_ecs_task_definition.authentication.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = ["subnet-12345678"]
-    security_groups = ["sg-12345678"]
-    assign_public_ip = true
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    # Ephemeral - will be destroyed after 4 hours
-    ignore_changes = []
-  }
-
-  # Set TTL for ephemeral service
-  provisioner "local-exec" {
-    command = "sleep 14400 && aws ecs update-service --cluster microservices-cluster --service authentication --desired-count 0"
   }
 }
-
-resource "aws_ecs_task_definition" "authentication" {
-  family                   = "authentication"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = "arn:aws:iam::123456789012:role/ecsTaskExecutionRole"
-
-  container_definitions = jsonencode([
-    {
-      name      = "authentication"
-      image     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/authentication:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ]
+provider "kubernetes" {
+  # Configuração do provedor Kubernetes
+}
+Recurso para o serviço risk-engine (dependência comum)
+resource "kubernetes_deployment" "risk_engine" {
+  metadata {
+    name = "risk-engine"
+    labels = {
+      app = "risk-engine"
     }
-  ])
-}
-
-# Define transaction-credit-auth service (depends on risk-engine)
-resource "aws_ecs_service" "transaction_credit_auth" {
-  name            = "transaction-credit-auth"
-  cluster         = "microservices-cluster"
-  task_definition = aws_ecs_task_definition.transaction_credit_auth.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-  depends_on      = [aws_ecs_service.risk_engine]
-
-  network_configuration {
-    subnets         = ["subnet-12345678"]
-    security_groups = ["sg-12345678"]
-    assign_public_ip = true
   }
-
-  lifecycle {
-    create_before_destroy = true
-    # Ephemeral - will be destroyed after 4 hours
-    ignore_changes = []
-  }
-
-  # Set TTL for ephemeral service
-  provisioner "local-exec" {
-    command = "sleep 14400 && aws ecs update-service --cluster microservices-cluster --service transaction-credit-auth --desired-count 0"
+spec {
+    replicas = 1
+selector {
+  match_labels = {
+    app = "risk-engine"
   }
 }
 
-resource "aws_ecs_task_definition" "transaction_credit_auth" {
-  family                   = "transaction-credit-auth"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = "arn:aws:iam::123456789012:role/ecsTaskExecutionRole"
-
-  container_definitions = jsonencode([
-    {
-      name      = "transaction-credit-auth"
-      image     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/transaction-credit-auth:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ],
-      environment = [
-        {
-          name  = "RISK_ENGINE_URL",
-          value = "http://risk-engine:8080"
-        }
-      ]
+template {
+  metadata {
+    labels = {
+      app = "risk-engine"
     }
-  ])
-}
-
-# Define pix service (depends on risk-engine)
-resource "aws_ecs_service" "pix" {
-  name            = "pix"
-  cluster         = "microservices-cluster"
-  task_definition = aws_ecs_task_definition.pix.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-  depends_on      = [aws_ecs_service.risk_engine]
-
-  network_configuration {
-    subnets         = ["subnet-12345678"]
-    security_groups = ["sg-12345678"]
-    assign_public_ip = true
   }
 
-  lifecycle {
-    create_before_destroy = true
-    # Ephemeral - will be destroyed after 4 hours
-    ignore_changes = []
-  }
+  spec {
+    container {
+      image = "risk-engine:latest"
+      name  = "risk-engine"
 
-  # Set TTL for ephemeral service
-  provisioner "local-exec" {
-    command = "sleep 14400 && aws ecs update-service --cluster microservices-cluster --service pix --desired-count 0"
-  }
-}
-
-resource "aws_ecs_task_definition" "pix" {
-  family                   = "pix"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = "arn:aws:iam::123456789012:role/ecsTaskExecutionRole"
-
-  container_definitions = jsonencode([
-    {
-      name      = "pix"
-      image     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/pix:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ],
-      environment = [
-        {
-          name  = "RISK_ENGINE_URL",
-          value = "http://risk-engine:8080"
-        }
-      ]
+      port {
+        container_port = 8080
+      }
     }
-  ])
-}
-
-# Define credit-card service (depends on authentication and transaction-credit-auth)
-resource "aws_ecs_service" "credit_card" {
-  name            = "credit-card"
-  cluster         = "microservices-cluster"
-  task_definition = aws_ecs_task_definition.credit_card.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-  depends_on      = [aws_ecs_service.authentication, aws_ecs_service.transaction_credit_auth]
-
-  network_configuration {
-    subnets         = ["subnet-12345678"]
-    security_groups = ["sg-12345678"]
-    assign_public_ip = true
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    # Ephemeral - will be destroyed after 4 hours
-    ignore_changes = []
-  }
-
-  # Set TTL for ephemeral service
-  provisioner "local-exec" {
-    command = "sleep 14400 && aws ecs update-service --cluster microservices-cluster --service credit-card --desired-count 0"
   }
 }
 
-resource "aws_ecs_task_definition" "credit_card" {
-  family                   = "credit-card"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = "arn:aws:iam::123456789012:role/ecsTaskExecutionRole"
-
-  container_definitions = jsonencode([
-    {
-      name      = "credit-card"
-      image     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/credit-card:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ],
-      environment = [
-        {
-          name  = "AUTH_SERVICE_URL",
-          value = "http://authentication:8080"
-        },
-        {
-          name  = "TRANSACTION_CREDIT_AUTH_URL",
-          value = "http://transaction-credit-auth:8080"
-        }
-      ]
+}
+# Definição do tempo de vida (TTL) para o recurso efêmero
+  timeouts {
+    create = "10m"
+    delete = "5m"
+  }
+}
+resource "kubernetes_service" "risk_engine" {
+  metadata {
+    name = "risk-engine"
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.risk_engine.metadata[0].labels.app
     }
-  ])
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+Recurso para o serviço authentication
+resource "kubernetes_deployment" "authentication" {
+  metadata {
+    name = "authentication"
+    labels = {
+      app = "authentication"
+    }
+  }
+spec {
+    replicas = 1
+selector {
+  match_labels = {
+    app = "authentication"
+  }
+}
+
+template {
+  metadata {
+    labels = {
+      app = "authentication"
+    }
+  }
+
+  spec {
+    container {
+      image = "authentication:latest"
+      name  = "authentication"
+
+      port {
+        container_port = 8080
+      }
+    }
+  }
+}
+
+}
+# Definição do tempo de vida (TTL) para o recurso efêmero
+  timeouts {
+    create = "10m"
+    delete = "5m"
+  }
+}
+resource "kubernetes_service" "authentication" {
+  metadata {
+    name = "authentication"
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.authentication.metadata[0].labels.app
+    }
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+Recurso para o serviço transaction-credit-auth (depende de risk-engine)
+resource "kubernetes_deployment" "transaction_credit_auth" {
+  metadata {
+    name = "transaction-credit-auth"
+    labels = {
+      app = "transaction-credit-auth"
+    }
+  }
+spec {
+    replicas = 1
+selector {
+  match_labels = {
+    app = "transaction-credit-auth"
+  }
+}
+
+template {
+  metadata {
+    labels = {
+      app = "transaction-credit-auth"
+    }
+  }
+
+  spec {
+    container {
+      image = "transaction-credit-auth:latest"
+      name  = "transaction-credit-auth"
+
+      port {
+        container_port = 8080
+      }
+
+      env {
+        name  = "RISK_ENGINE_URL"
+        value = "http://${kubernetes_service.risk_engine.metadata[0].name}"
+      }
+    }
+  }
+}
+
+}
+# Dependência explícita
+  depends_on = [kubernetes_deployment.risk_engine]
+# Definição do tempo de vida (TTL) para o recurso efêmero
+  timeouts {
+    create = "10m"
+    delete = "5m"
+  }
+}
+resource "kubernetes_service" "transaction_credit_auth" {
+  metadata {
+    name = "transaction-credit-auth"
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.transaction_credit_auth.metadata[0].labels.app
+    }
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+Recurso para o serviço credit-card (depende de authentication e transaction-credit-auth)
+resource "kubernetes_deployment" "credit_card" {
+  metadata {
+    name = "credit-card"
+    labels = {
+      app = "credit-card"
+    }
+  }
+spec {
+    replicas = 1
+selector {
+  match_labels = {
+    app = "credit-card"
+  }
+}
+
+template {
+  metadata {
+    labels = {
+      app = "credit-card"
+    }
+  }
+
+  spec {
+    container {
+      image = "credit-card:latest"
+      name  = "credit-card"
+
+      port {
+        container_port = 8080
+      }
+
+      env {
+        name  = "AUTH_URL"
+        value = "http://${kubernetes_service.authentication.metadata[0].name}"
+      }
+
+      env {
+        name  = "TRANSACTION_CREDIT_AUTH_URL"
+        value = "http://${kubernetes_service.transaction_credit_auth.metadata[0].name}"
+      }
+    }
+  }
+}
+
+}
+# Dependências explícitas
+  depends_on = [
+    kubernetes_deployment.authentication,
+    kubernetes_deployment.transaction_credit_auth
+  ]
+# Definição do tempo de vida (TTL) para o recurso efêmero
+  timeouts {
+    create = "10m"
+    delete = "5m"
+  }
+}
+resource "kubernetes_service" "credit_card" {
+  metadata {
+    name = "credit-card"
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.credit_card.metadata[0].labels.app
+    }
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+Recurso para o serviço pix (depende de risk-engine)
+resource "kubernetes_deployment" "pix" {
+  metadata {
+    name = "pix"
+    labels = {
+      app = "pix"
+    }
+  }
+spec {
+    replicas = 1
+selector {
+  match_labels = {
+    app = "pix"
+  }
+}
+
+template {
+  metadata {
+    labels = {
+      app = "pix"
+    }
+  }
+
+  spec {
+    container {
+      image = "pix:latest"
+      name  = "pix"
+
+      port {
+        container_port = 8080
+      }
+
+      env {
+        name  = "RISK_ENGINE_URL"
+        value = "http://${kubernetes_service.risk_engine.metadata[0].name}"
+      }
+    }
+  }
+}
+
+}
+# Dependência explícita
+  depends_on = [kubernetes_deployment.risk_engine]
+# Definição do tempo de vida (TTL) para o recurso efêmero
+  timeouts {
+    create = "10m"
+    delete = "5m"
+  }
+}
+resource "kubernetes_service" "pix" {
+  metadata {
+    name = "pix"
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment.pix.metadata[0].labels.app
+    }
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+Configuração para tornar os recursos efêmeros (TTL)
+resource "null_resource" "cleanup" {
+  # Gatilho para destruir os recursos após um tempo determinado
+  triggers = {
+    expiration_time = timeadd(timestamp(), "2h") # Exemplo: 2 horas de vida
+  }
+# Dependências para garantir que todos os recursos sejam criados antes
+  depends_on = [
+    kubernetes_deployment.risk_engine,
+    kubernetes_deployment.authentication,
+    kubernetes_deployment.transaction_credit_auth,
+    kubernetes_deployment.credit_card,
+    kubernetes_deployment.pix
+  ]
+# Provisioner para destruir os recursos após o tempo definido
+  provisioner "local-exec" {
+    when    = destroy
+    command = "echo 'Recursos efêmeros expirados, iniciando limpeza...'"
+  }
 }
 ```

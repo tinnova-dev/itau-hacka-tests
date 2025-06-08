@@ -3,6 +3,7 @@ from strands import Agent
 from strands.models import BedrockModel
 import logging
 import json
+import strip_markdown
 
 # Carregar o arquivo de dependências
 def load_dependencies(file_path):
@@ -90,6 +91,8 @@ def process():
         except Exception as e:
             print(f"ERROR: Could not extract text from AgentResult. Error: {e}")
             print("Please inspect the 'agent_result' object to determine the correct attribute.")
+
+    final_agent_response_text = strip_markdown.strip_markdown(final_agent_response_text)
 
     # Salvar o código Terraform gerado
     with open("./out/generated_terraform.tf", "w") as file:

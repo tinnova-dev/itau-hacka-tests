@@ -8,3 +8,4 @@ boto3
 langchain_aws
 strands-agents 
 strands-agents-tools
+strip-markdown

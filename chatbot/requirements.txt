@@ -5,3 +5,4 @@ langchain-groq
 fastapi
 pydantic
 uvicorn
+langchain-aws

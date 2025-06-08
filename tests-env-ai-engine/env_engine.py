@@ -4,6 +4,7 @@ from strands.models import BedrockModel
 import logging
 import json
 import strip_markdown
+from dto.generate_test_env_request import GenerateTestEnvRequest
 
 # Carregar o arquivo de dependências
 def load_dependencies(file_path):
@@ -15,14 +16,14 @@ def filter_dependent_apps(apps):
     return [app for app in apps if app["dependencies"]]
 
 # Gerar um prompt para o ChatBedrock criar o Terraform
-def generate_terraform_prompt(apps):
+def generate_terraform_prompt(app_name, apps):
     services_str = "\n".join([
         f"- {app['name']} (Repo: {app['repo']}) depende de {', '.join(app['dependencies'])}"
         for app in apps
     ])
     
     prompt = f"""
-    Gere um arquivo Terraform para provisionar os seguintes microsserviços de forma efêmera:
+    Gere um arquivo Terraform para provisionar os seguintes microsserviços de forma efêmera para a aplicação com o nome {app_name}:
 
     {services_str}
 
@@ -40,7 +41,7 @@ def generate_terraform_code(prompt):
     response = chat.invoke(prompt)
     return response
 
-def process():
+def process(request: GenerateTestEnvRequest) -> str:
     file_path = "./resources/cmdb-output.json"  # Arquivo JSON com dependências
     data = load_dependencies(file_path)
         
@@ -51,7 +52,7 @@ def process():
         return
 
     
-    prompt = generate_terraform_prompt(dependent_apps)
+    prompt = generate_terraform_prompt(request.app_name, dependent_apps)
 
     
     session = boto3.Session(
@@ -99,5 +100,4 @@ def process():
         file.write(final_agent_response_text)
 
     print("Arquivo Terraform gerado com sucesso: generated_terraform.tf")
-
-process()
+    return final_agent_response_text

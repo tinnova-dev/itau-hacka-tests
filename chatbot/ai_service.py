@@ -16,8 +16,7 @@ class State(TypedDict):
 
 workflow = StateGraph(state_schema=State)
 
-
-model = init_chat_model("gemma2-9b-it", model_provider="groq", api_key="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")
+model = init_chat_model("us.anthropic.claude-3-7-sonnet-20250219-v1:0", model_provider="bedrock_converse")
 
 # Define the function that calls the model
 def call_model(state: MessagesState):

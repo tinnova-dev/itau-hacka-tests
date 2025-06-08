@@ -1,18 +1,6 @@
-```terraform
-main.tf
-Definição dos provedores
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
-    }
-  }
-}
 provider "kubernetes" {
-  # Configuração do provedor Kubernetes
+  config_path = "~/.kube/config"
 }
-Recurso para o serviço risk-engine (dependência comum)
 resource "kubernetes_deployment" "risk_engine" {
   metadata {
     name = "risk-engine"
@@ -37,38 +25,31 @@ template {
 
   spec {
     container {
-      image = "risk-engine:latest"
+      image = "ghcr.io/tinnova-dev/risk-engine:latest"
       name  = "risk-engine"
 
-      port {
-        container_port = 8080
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        requests = {
+          cpu    = "0.2"
+          memory = "256Mi"
+        }
       }
     }
+
+    termination_grace_period_seconds = 30
   }
 }
 
 }
-# Definição do tempo de vida (TTL) para o recurso efêmero
-  timeouts {
-    create = "10m"
-    delete = "5m"
+timeouts {
+    create = "5m"
+    delete = "2m"
   }
 }
-resource "kubernetes_service" "risk_engine" {
-  metadata {
-    name = "risk-engine"
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.risk_engine.metadata[0].labels.app
-    }
-    port {
-      port        = 80
-      target_port = 8080
-    }
-  }
-}
-Recurso para o serviço authentication
 resource "kubernetes_deployment" "authentication" {
   metadata {
     name = "authentication"
@@ -93,38 +74,31 @@ template {
 
   spec {
     container {
-      image = "authentication:latest"
+      image = "ghcr.io/tinnova-dev/authentication:latest"
       name  = "authentication"
 
-      port {
-        container_port = 8080
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        requests = {
+          cpu    = "0.2"
+          memory = "256Mi"
+        }
       }
     }
+
+    termination_grace_period_seconds = 30
   }
 }
 
 }
-# Definição do tempo de vida (TTL) para o recurso efêmero
-  timeouts {
-    create = "10m"
-    delete = "5m"
+timeouts {
+    create = "5m"
+    delete = "2m"
   }
 }
-resource "kubernetes_service" "authentication" {
-  metadata {
-    name = "authentication"
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.authentication.metadata[0].labels.app
-    }
-    port {
-      port        = 80
-      target_port = 8080
-    }
-  }
-}
-Recurso para o serviço transaction-credit-auth (depende de risk-engine)
 resource "kubernetes_deployment" "transaction_credit_auth" {
   metadata {
     name = "transaction-credit-auth"
@@ -149,45 +123,32 @@ template {
 
   spec {
     container {
-      image = "transaction-credit-auth:latest"
+      image = "ghcr.io/tinnova-dev/transaction-credit-auth:latest"
       name  = "transaction-credit-auth"
 
-      port {
-        container_port = 8080
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        requests = {
+          cpu    = "0.2"
+          memory = "256Mi"
+        }
       }
-
-      env {
-        name  = "RISK_ENGINE_URL"
-        value = "http://${kubernetes_service.risk_engine.metadata[0].name}"
-      }
     }
+
+    termination_grace_period_seconds = 30
   }
 }
 
 }
-# Dependência explícita
-  depends_on = [kubernetes_deployment.risk_engine]
-# Definição do tempo de vida (TTL) para o recurso efêmero
-  timeouts {
-    create = "10m"
-    delete = "5m"
+depends_on = [kubernetes_deployment.risk_engine]
+timeouts {
+    create = "5m"
+    delete = "2m"
   }
 }
-resource "kubernetes_service" "transaction_credit_auth" {
-  metadata {
-    name = "transaction-credit-auth"
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.transaction_credit_auth.metadata[0].labels.app
-    }
-    port {
-      port        = 80
-      target_port = 8080
-    }
-  }
-}
-Recurso para o serviço credit-card (depende de authentication e transaction-credit-auth)
 resource "kubernetes_deployment" "credit_card" {
   metadata {
     name = "credit-card"
@@ -212,53 +173,32 @@ template {
 
   spec {
     container {
-      image = "credit-card:latest"
+      image = "ghcr.io/tinnova-dev/credit-card:latest"
       name  = "credit-card"
 
-      port {
-        container_port = 8080
-      }
-
-      env {
-        name  = "AUTH_URL"
-        value = "http://${kubernetes_service.authentication.metadata[0].name}"
-      }
-
-      env {
-        name  = "TRANSACTION_CREDIT_AUTH_URL"
-        value = "http://${kubernetes_service.transaction_credit_auth.metadata[0].name}"
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        requests = {
+          cpu    = "0.2"
+          memory = "256Mi"
+        }
       }
     }
+
+    termination_grace_period_seconds = 30
   }
 }
 
 }
-# Dependências explícitas
-  depends_on = [
-    kubernetes_deployment.authentication,
-    kubernetes_deployment.transaction_credit_auth
-  ]
-# Definição do tempo de vida (TTL) para o recurso efêmero
-  timeouts {
-    create = "10m"
-    delete = "5m"
+depends_on = [kubernetes_deployment.authentication, kubernetes_deployment.transaction_credit_auth]
+timeouts {
+    create = "5m"
+    delete = "2m"
   }
 }
-resource "kubernetes_service" "credit_card" {
-  metadata {
-    name = "credit-card"
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.credit_card.metadata[0].labels.app
-    }
-    port {
-      port        = 80
-      target_port = 8080
-    }
-  }
-}
-Recurso para o serviço pix (depende de risk-engine)
 resource "kubernetes_deployment" "pix" {
   metadata {
     name = "pix"
@@ -283,62 +223,37 @@ template {
 
   spec {
     container {
-      image = "pix:latest"
+      image = "ghcr.io/tinnova-dev/pix:latest"
       name  = "pix"
 
-      port {
-        container_port = 8080
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        requests = {
+          cpu    = "0.2"
+          memory = "256Mi"
+        }
       }
-
-      env {
-        name  = "RISK_ENGINE_URL"
-        value = "http://${kubernetes_service.risk_engine.metadata[0].name}"
-      }
     }
+
+    termination_grace_period_seconds = 30
   }
 }
 
 }
-# Dependência explícita
-  depends_on = [kubernetes_deployment.risk_engine]
-# Definição do tempo de vida (TTL) para o recurso efêmero
-  timeouts {
-    create = "10m"
-    delete = "5m"
+depends_on = [kubernetes_deployment.risk_engine]
+timeouts {
+    create = "5m"
+    delete = "2m"
   }
 }
-resource "kubernetes_service" "pix" {
-  metadata {
-    name = "pix"
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.pix.metadata[0].labels.app
-    }
-    port {
-      port        = 80
-      target_port = 8080
-    }
-  }
+Definindo um tempo de vida para os recursos (TTL)
+resource "time_rotating" "ttl" {
+  rotation_days = 1  # Define um TTL de 1 dia
 }
-Configuração para tornar os recursos efêmeros (TTL)
-resource "null_resource" "cleanup" {
-  # Gatilho para destruir os recursos após um tempo determinado
-  triggers = {
-    expiration_time = timeadd(timestamp(), "2h") # Exemplo: 2 horas de vida
-  }
-# Dependências para garantir que todos os recursos sejam criados antes
-  depends_on = [
-    kubernetes_deployment.risk_engine,
-    kubernetes_deployment.authentication,
-    kubernetes_deployment.transaction_credit_auth,
-    kubernetes_deployment.credit_card,
-    kubernetes_deployment.pix
-  ]
-# Provisioner para destruir os recursos após o tempo definido
-  provisioner "local-exec" {
-    when    = destroy
-    command = "echo 'Recursos efêmeros expirados, iniciando limpeza...'"
-  }
+Outputs para informar quando os recursos serão destruídos
+output "resources_expiration" {
+  value = time_rotating.ttl.rotation_rfc3339
 }
-```

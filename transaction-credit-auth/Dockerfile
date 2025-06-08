@@ -25,7 +25,7 @@ RUN apk --no-cache add curl
 COPY --from=build /app/transaction-credit-auth .
 
 # Expor a porta que a aplicação utiliza
-EXPOSE 8084
+EXPOSE 8085
 
 # Configurar healthcheck
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 CMD curl -X POST -H "Content-Type: application/json" -d '{"amount": 100}' http://localhost:8084/transaction || exit 1

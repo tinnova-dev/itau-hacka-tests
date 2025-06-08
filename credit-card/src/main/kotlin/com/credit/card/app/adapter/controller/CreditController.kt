@@ -18,7 +18,7 @@ class CreditController(
     ): String {
         return creditService.creditOperation(
             creditCard = creditOperationRequest.creditCard,
-            value = creditOperationRequest.amount
+            amount = creditOperationRequest.amount
         );
     }
 }

@@ -12,7 +12,7 @@ class CreditService(
 ) {
     fun creditOperation(
         creditCard: String,
-        value: Long,
+        amount: Long,
     ): String {
         authenticationClient.authenticate(AuthenticationRequest(creditCard))
 //            transactionCreditAuthClient.creditAuth(TransactionCreditAuthRequest(creditCard, value))

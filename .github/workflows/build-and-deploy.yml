@@ -72,7 +72,7 @@ jobs:
 
   deploy-to-ecs:
     name: Deploy to Amazon ECS
-    needs: build-and-push-docker-images
+    needs: [build-and-push-docker-images, find-dockerfiles]
     runs-on: ubuntu-latest
     environment: production
     strategy:

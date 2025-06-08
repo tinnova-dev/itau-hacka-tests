@@ -33,10 +33,10 @@ jobs:
       - name: Find directories with Dockerfiles
         id: find-dirs
         run: |
-          DIRS=$(find . -name "Dockerfile" -type f -exec dirname {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          DIRS=$(find . -name "Dockerfile" -type f -exec dirname {} \; | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
           # Filter out tests-env-ai-engine unless BUILD_TESTS_ENV_AI_ENGINE is set to true
           if [[ "${{ github.event.inputs.build_tests_env_ai_engine }}" != "true" ]]; then
-            DIRS=$(echo $DIRS | jq 'map(select(. != "./tests-env-ai-engine"))')
+            DIRS=$(echo $DIRS | jq -c 'map(select(. != "./tests-env-ai-engine"))')
           fi
           echo "directories=$DIRS" >> $GITHUB_OUTPUT
 

@@ -3,6 +3,13 @@ name: Build, Push, and Deploy to Amazon ECS
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_tests_env_ai_engine:
+        description: 'Build and deploy tests-env-ai-engine'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   AWS_REGION: us-west-2
@@ -27,6 +34,10 @@ jobs:
         id: find-dirs
         run: |
           DIRS=$(find . -name "Dockerfile" -type f -exec dirname {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          # Filter out tests-env-ai-engine unless BUILD_TESTS_ENV_AI_ENGINE is set to true
+          if [[ "${{ github.event.inputs.build_tests_env_ai_engine }}" != "true" ]]; then
+            DIRS=$(echo $DIRS | jq 'map(select(. != "./tests-env-ai-engine"))')
+          fi
           echo "directories=$DIRS" >> $GITHUB_OUTPUT
 
   build-and-push-docker-images:

@@ -49,11 +49,11 @@ func handleRiskAnalysis(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := RiskResponse{
-		Status: "ok",
+		Status: "APPROVED",
 	}
 
 	if request.CreditCard == "INVALID_CARD" {
-		response.Status = "denied"
+		response.Status = "DENIED"
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -43,8 +43,8 @@ func main() {
 	// Rotas
 	r.Post("/transaction", handleTransaction)
 
-	log.Println("Servidor iniciado na porta 8084")
-	log.Fatal(http.ListenAndServe(":8084", r))
+	log.Println("Servidor iniciado na porta 8085")
+	log.Fatal(http.ListenAndServe(":8085", r))
 }
 
 func handleTransaction(w http.ResponseWriter, r *http.Request) {

@@ -17,7 +17,8 @@ class CreditController(
     fun creditOperation(@RequestBody creditOperationRequest: CreditOperationRequest): String {
         return creditService.creditOperation(
             creditCard = creditOperationRequest.creditCard,
-            value = creditOperationRequest.value
+            amount = creditOperationRequest.amount,
+            username = creditOperationRequest.username
         );
     }
 }   

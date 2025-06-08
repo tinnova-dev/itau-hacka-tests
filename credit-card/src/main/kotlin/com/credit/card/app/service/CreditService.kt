@@ -12,9 +12,13 @@ class CreditService(
     private val transactionCreditAuthClient: TransactionCreditAuthClient
 ) {
 
-    fun creditOperation(creditCard: String, value: Long): String {
-        authenticationClient.authenticate(AuthenticationRequest(creditCard))
-//            transactionCreditAuthClient.creditAuth(TransactionCreditAuthRequest(creditCard, value))
-        return "APPROVED"
+    fun creditOperation(creditCard: String, amount: Long, username: String): String {
+      val authToken = authenticationClient.authenticate(AuthenticationRequest(username))
+        if (authToken.statusCode.isError) {
+            return authToken.body!!
+        }
+        return transactionCreditAuthClient.creditAuth(
+            TransactionCreditAuthRequest(creditCard, amount, authToken.body!!)
+        ).toString()
     }
 }

@@ -3,13 +3,16 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+type RiskRequest struct {
+	Amount     int64  `json:"amount"`
+	CreditCard string `json:"creditCard"`
+}
 
 type RiskResponse struct {
 	Status string `json:"status"`
@@ -23,22 +26,25 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	// Rotas
-	r.Get("/risk-analysis", handleRiskAnalysis)
+	r.Post("/risk-analysis", handleRiskAnalysis)
 
 	log.Println("Servidor iniciado na porta 8083")
 	log.Fatal(http.ListenAndServe(":8083", r))
 }
 
 func handleRiskAnalysis(w http.ResponseWriter, r *http.Request) {
-	// Gera um resultado aleatório
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := "ok"
-	if rng.Float32() < 0.5 {
-		result = "not ok"
+	var request RiskRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Erro ao decodificar requisição", http.StatusBadRequest)
+		return
 	}
 
 	response := RiskResponse{
-		Status: result,
+		Status: "APPROVED",
+	}
+
+	if request.CreditCard == "INVALID_CARD" {
+		response.Status = "DENIED"
 	}
 
 	w.Header().Set("Content-Type", "application/json")

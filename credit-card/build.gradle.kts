@@ -36,6 +36,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 //    implementation("io.r2dbc:r2dbc-spi:1.0.0.RELEASE")
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+    implementation("org.springframework.cloud:spring-cloud-commons")
 
 
 //    // --- Infraestrutura ---
@@ -68,6 +70,12 @@ dependencies {
     // testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     // testImplementation("org.testcontainers:junit-jupiter") // Para testes com containers
     // testImplementation("org.testcontainers:postgresql")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.0")
+    }
 }
 
 tasks.withType<KotlinCompile> {

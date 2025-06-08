@@ -19,6 +19,6 @@ class CreditController(
         return creditService.creditOperation(
             creditCard = creditOperationRequest.creditCard,
             amount = creditOperationRequest.amount
-        );
+        )
     }
 }

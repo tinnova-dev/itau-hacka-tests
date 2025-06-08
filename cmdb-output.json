@@ -16,20 +16,20 @@
     },
     {
       "name": "authentication",
-      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "repo": "https://github.com/tinnova-dev/itau-hacka-tests/tree/main/authentication",
       "dependencies": [
       ]
     },
     {
       "name": "pix",
-      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "repo": "https://github.com/tinnova-dev/itau-hacka-tests/tree/main/pix",
       "dependencies": [
         "risk-engine"
       ]
     },
     {
       "name": "transaction-credit-auth",
-      "repo": "https://github.com/Caiuzu/project-boilerplate",
+      "repo": "https://github.com/tinnova-dev/itau-hacka-tests/tree/main/transaction-credit-auth",
       "dependencies": [
         "risk-engine"
       ]

@@ -25,8 +25,8 @@ func main() {
 	// Rotas
 	r.Get("/risk-analysis", handleRiskAnalysis)
 
-	log.Println("Servidor iniciado na porta 8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Println("Servidor iniciado na porta 8083")
+	log.Fatal(http.ListenAndServe(":8083", r))
 }
 
 func handleRiskAnalysis(w http.ResponseWriter, r *http.Request) {

@@ -25,10 +25,10 @@ RUN apk --no-cache add curl
 COPY --from=build /app/transaction-credit-auth .
 
 # Expor a porta que a aplicação utiliza
-EXPOSE 8081
+EXPOSE 8084
 
 # Configurar healthcheck
-HEALTHCHECK --interval=10s --timeout=5s --retries=3 CMD curl -X POST -H "Content-Type: application/json" -d '{"amount": 100}' http://localhost:8081/transaction || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 CMD curl -X POST -H "Content-Type: application/json" -d '{"amount": 100}' http://localhost:8084/transaction || exit 1
 
 # Executar a aplicação
 ENTRYPOINT ["./transaction-credit-auth"]

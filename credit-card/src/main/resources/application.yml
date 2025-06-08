@@ -25,4 +25,4 @@ authentication:
 
 transaction-credit-auth:
   service:
-    url: localhost:8085
+    url: localhost:8084

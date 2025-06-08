@@ -4,9 +4,8 @@ import org.springframework.stereotype.Service
 
 @Service
 class AuthenticationService {
-
     companion object {
-        private const val INVALID_CARD: String = "INVALID_CARD";
+        private const val INVALID_CARD: String = "INVALID_CARD"
     }
 
     fun authenticate(creditCard: String) {

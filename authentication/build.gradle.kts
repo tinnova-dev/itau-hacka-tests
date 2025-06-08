@@ -37,7 +37,6 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 //    implementation("io.r2dbc:r2dbc-spi:1.0.0.RELEASE")
 
-
 //    // --- Infraestrutura ---
 //    runtimeOnly("org.postgresql:postgresql")
 //    // implementation("org.liquibase:liquibase-core") // Descomente se for usar Liquibase
@@ -82,4 +81,4 @@ tasks.withType<Test> {
 }
 
 // Jacoco e Liquibase podem ser configurados aqui se necessário
-// Consulte o build.gradle do food-core-api para exemplos avançados 
+// Consulte o build.gradle do food-core-api para exemplos avançados

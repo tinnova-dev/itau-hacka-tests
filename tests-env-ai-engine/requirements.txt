@@ -4,3 +4,7 @@ huggingface_hub
 langchain_community
 transformers
 torch
+boto3
+langchain_aws
+strands-agents 
+strands-agents-tools

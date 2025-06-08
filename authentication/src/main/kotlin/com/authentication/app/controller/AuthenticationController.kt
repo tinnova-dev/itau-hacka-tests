@@ -17,7 +17,7 @@ class AuthenticationController(
     fun creditOperation(
         @RequestBody creditCard: AuthenticationRequest,
     ): ResponseEntity<String> {
-        authenticationService.authenticate(creditCard.creditCard)
+        authenticationService.authenticate(creditCard.username)
         return ResponseEntity.ok("Authenticated")
     }
 }

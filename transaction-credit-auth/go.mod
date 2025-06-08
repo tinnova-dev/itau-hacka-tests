@@ -1,4 +1,4 @@
-module risk-engine
+module transaction-credit-auth
 
 go 1.21
 

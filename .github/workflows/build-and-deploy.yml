@@ -1,0 +1,116 @@
+name: Build, Push, and Deploy to Amazon ECS
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REGISTRY: 271760356528.dkr.ecr.us-west-2.amazonaws.com
+  IMAGE_TAG: latest
+  ECS_SERVICE: MY_ECS_SERVICE
+  ECS_CLUSTER: tinnova-hackathon
+
+permissions:
+  contents: read
+
+jobs:
+  find-dockerfiles:
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.find-dirs.outputs.directories }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Find directories with Dockerfiles
+        id: find-dirs
+        run: |
+          DIRS=$(find . -name "Dockerfile" -type f -exec dirname {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "directories=$DIRS" >> $GITHUB_OUTPUT
+
+  build-and-push-docker-images:
+    needs: find-dockerfiles
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: ${{ fromJson(needs.find-dockerfiles.outputs.directories) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Extract directory name for image tag
+        id: extract-name
+        run: |
+          DIR_NAME=$(basename ${{ matrix.directory }})
+          echo "image_name=$DIR_NAME" >> $GITHUB_OUTPUT
+
+      - name: Build, tag, and push Docker image
+        id: build-image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ matrix.directory }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/tinnova-hackathon/${{ steps.extract-name.outputs.image_name }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-to-ecs:
+    name: Deploy to Amazon ECS
+    needs: [build-and-push-docker-images, find-dockerfiles]
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        directory: ${{ fromJson(needs.find-dockerfiles.outputs.directories) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract directory name for service name
+        id: extract-name
+        run: |
+          DIR_NAME=$(basename ${{ matrix.directory }})
+          echo "service_name=$DIR_NAME" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ matrix.directory }}/.aws/task-definition.json
+          container-name: ${{ steps.extract-name.outputs.service_name }}
+          image: ${{ env.ECR_REGISTRY }}/tinnova-hackathon/${{ steps.extract-name.outputs.service_name }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ steps.extract-name.outputs.service_name }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

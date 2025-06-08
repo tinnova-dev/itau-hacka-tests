@@ -39,7 +39,6 @@ dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
     implementation("org.springframework.cloud:spring-cloud-commons")
 
-
 //    // --- Infraestrutura ---
 //    runtimeOnly("org.postgresql:postgresql")
 //    // implementation("org.liquibase:liquibase-core") // Descomente se for usar Liquibase
@@ -90,4 +89,4 @@ tasks.withType<Test> {
 }
 
 // Jacoco e Liquibase podem ser configurados aqui se necessário
-// Consulte o build.gradle do food-core-api para exemplos avançados 
+// Consulte o build.gradle do food-core-api para exemplos avançados

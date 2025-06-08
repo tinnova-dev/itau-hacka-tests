@@ -7,7 +7,6 @@ on:
 env:
   AWS_REGION: us-west-2
   ECR_REGISTRY: 271760356528.dkr.ecr.us-west-2.amazonaws.com
-  ECR_REPOSITORY: hackathon/tinnova
   IMAGE_TAG: latest
   ECS_SERVICE: MY_ECS_SERVICE
   ECS_CLUSTER: tinnova-hackathon
@@ -67,7 +66,7 @@ jobs:
           context: ${{ matrix.directory }}
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}/${{ steps.extract-name.outputs.image_name }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ steps.extract-name.outputs.image_name }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -106,7 +105,7 @@ jobs:
         with:
           task-definition: ${{ matrix.directory }}/.aws/task-definition.json
           container-name: ${{ steps.extract-name.outputs.service_name }}
-          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}/${{ steps.extract-name.outputs.service_name }}:${{ env.IMAGE_TAG }}
+          image: ${{ env.ECR_REGISTRY }}/tinnova-hackathon/${{ steps.extract-name.outputs.service_name }}:${{ env.IMAGE_TAG }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1

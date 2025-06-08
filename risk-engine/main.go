@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 type RiskRequest struct {
@@ -24,6 +25,14 @@ func main() {
 	// Middleware
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	// Rotas
 	r.Post("/risk-analysis", handleRiskAnalysis)
@@ -40,11 +49,11 @@ func handleRiskAnalysis(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := RiskResponse{
-		Status: "APPROVED",
+		Status: "ok",
 	}
 
 	if request.CreditCard == "INVALID_CARD" {
-		response.Status = "DENIED"
+		response.Status = "denied"
 	}
 
 	w.Header().Set("Content-Type", "application/json")

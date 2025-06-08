@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 )
 
 type TransactionRequest struct {
-	Amount float64 `json:"amount"`
+	Amount     int64  `json:"amount"`
+	CreditCard string `json:"creditCard"`
 }
 
 type RiskResponse struct {
@@ -41,8 +43,8 @@ func main() {
 	// Rotas
 	r.Post("/transaction", handleTransaction)
 
-	log.Println("Servidor iniciado na porta 8081")
-	log.Fatal(http.ListenAndServe(":8081", r))
+	log.Println("Servidor iniciado na porta 8085")
+	log.Fatal(http.ListenAndServe(":8085", r))
 }
 
 func handleTransaction(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +55,7 @@ func handleTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Chama o serviço de análise de risco
-	riskResp, err := callRiskEngine()
+	riskResp, err := callRiskEngine(req)
 	if err != nil {
 		http.Error(w, "Erro ao consultar serviço de risco", http.StatusInternalServerError)
 		return
@@ -61,7 +63,7 @@ func handleTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// Processa a resposta
 	response := TransactionResponse{
-		Approved: riskResp.Status == "ok",
+		Approved: riskResp.Status == "APPROVED",
 		Message:  "Transação " + riskResp.Status,
 	}
 
@@ -69,8 +71,13 @@ func handleTransaction(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func callRiskEngine() (*RiskResponse, error) {
-	resp, err := http.Get("http://localhost:8080/risk-analysis")
+func callRiskEngine(req TransactionRequest) (*RiskResponse, error) {
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post("http://localhost:8083/risk-analysis", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}

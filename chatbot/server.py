@@ -14,6 +14,6 @@ async def send_aog_message(request: MessageRequest):
     return JSONResponse(content=jsonable_encoder(message_response))
 
 def run():
-    uvicorn.run(app, host="localhost", port=8005)
+    uvicorn.run(app, host="0.0.0.0", port=8005)
 
 run()

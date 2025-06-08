@@ -1,0 +1,29 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  pr-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Call PR Guard Service
+        id: pr-guard
+        run: |
+          response=$(curl -s -o response.txt -w "%{http_code}" -X POST https://nnahpt4fpj.execute-api.us-west-2.amazonaws.com/default/pr-guard \
+            -H "Content-Type: application/json" \
+            -d '{"id_repo": "tinnova-dev/itau-hacka-tests", "id_pr": ${{ github.event.pull_request.number }}}')
+          
+          if [ "$response" -eq 200 ]; then
+            echo "PR Guard check passed successfully"
+            exit 0
+          else
+            echo "PR Guard check failed with status code: $response"
+            echo "Response body:"
+            cat response.txt
+            exit 1
+          fi

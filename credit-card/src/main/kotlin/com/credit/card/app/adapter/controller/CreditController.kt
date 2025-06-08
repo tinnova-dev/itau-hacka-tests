@@ -22,4 +22,4 @@ class CreditController(
             username = creditOperationRequest.username,
         )
     }
-} 
+}

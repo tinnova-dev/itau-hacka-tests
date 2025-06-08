@@ -10,15 +10,16 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/credit")
 class CreditController(
-    private val creditService: CreditService
+    private val creditService: CreditService,
 ) {
-
     @PostMapping
-    fun creditOperation(@RequestBody creditOperationRequest: CreditOperationRequest): String {
+    fun creditOperation(
+        @RequestBody creditOperationRequest: CreditOperationRequest,
+    ): String {
         return creditService.creditOperation(
             creditCard = creditOperationRequest.creditCard,
             amount = creditOperationRequest.amount,
-            username = creditOperationRequest.username
-        );
+            username = creditOperationRequest.username,
+        )
     }
-}   
+} 
